@@ -47,3 +47,7 @@
 .today-todos-title {
   margin-top: 0;
 }
+
+body.is-mobile .today-todos-layout.has-side {
+  gap: var(--size-4-8);
+}
