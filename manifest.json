@@ -1,7 +1,7 @@
 {
   "id": "today-todos",
   "name": "Today Todos",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "minAppVersion": "1.4.0",
   "description": "A `today-todos` code block that shows the tasks under one heading of another note, with checkboxes that write back. Optional side column for desktop.",
   "author": "Jimmy Zhang",
