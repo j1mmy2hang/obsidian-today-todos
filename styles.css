@@ -1,0 +1,12 @@
+.today-todos-group + .today-todos-group {
+  margin-top: var(--size-4-3);
+}
+
+.today-todos-group > ul {
+  margin-block: 0;
+}
+
+.today-todos-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
