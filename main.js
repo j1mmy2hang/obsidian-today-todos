@@ -99,7 +99,7 @@ class TodayTodos extends MarkdownRenderChild {
     if (!file) return this.note(`No file "${this.opts.file}".`);
     const { found, tasks } = readSection(text, this.opts.heading);
     if (!found) return this.note(`No "${this.opts.heading}" heading in ${file.basename}.`);
-    if (!tasks.length) return this.note('Nothing for today.');
+    if (!tasks.length) return this.note('All clear for now.');
 
     await MarkdownRenderer.render(this.app, tasks.map((t) => t.text.trimStart()).join('\n'), el, file.path, this);
     el.querySelectorAll('input.task-list-item-checkbox').forEach((input, i) => {
