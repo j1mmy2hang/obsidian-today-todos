@@ -43,3 +43,7 @@
     align-items: start;
   }
 }
+
+.today-todos-title {
+  margin-top: 0;
+}

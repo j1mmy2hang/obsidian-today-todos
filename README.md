@@ -14,14 +14,18 @@ by default, `## Today` in `todo.md.md`.
 
 ## Options
 
-Leading `key: value` lines set the source:
+Leading `key: value` lines:
 
 ````
 ```today-todos
 file: todo.md.md
 heading: Today
+title: Todo
 ```
 ````
+
+`file` and `heading` pick the source (defaults shown). `title` adds a
+second-level heading above the list.
 
 ## Side column
 

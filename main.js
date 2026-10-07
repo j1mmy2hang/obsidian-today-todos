@@ -4,14 +4,14 @@ const DEFAULTS = { file: 'todo.md.md', heading: 'Today' };
 const TASK = /^(\s*[-*+]\s\[)(.)(\].*)$/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 
-// Leading `file:` / `heading:` lines are settings; everything after them is
+// Leading `file:` / `heading:` / `title:` lines are settings; everything after them is
 // markdown for a side column, shown left of the todos on desktop.
 function parseOptions(source) {
   const opts = { ...DEFAULTS, side: '' };
   const lines = source.split('\n');
   let i = 0;
   for (; i < lines.length; i++) {
-    const m = lines[i].match(/^\s*(file|heading)\s*:\s*(.+?)\s*$/);
+    const m = lines[i].match(/^\s*(file|heading|title)\s*:\s*(.+?)\s*$/);
     if (m) opts[m[1]] = m[2];
     else if (lines[i].trim()) break;
   }
@@ -71,7 +71,9 @@ class TodayTodos extends MarkdownRenderChild {
       layout.addClass('has-side');
       MarkdownRenderer.render(this.app, this.opts.side, layout.createDiv('today-todos-side'), this.sourcePath, this);
     }
-    this.listEl = layout.createDiv('today-todos-list');
+    const column = layout.createDiv('today-todos-list');
+    if (this.opts.title) column.createEl('h2', { cls: 'today-todos-title', text: this.opts.title });
+    this.listEl = column.createDiv('today-todos-items');
     this.render();
   }
 
