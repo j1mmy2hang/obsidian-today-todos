@@ -1,16 +1,20 @@
 # Today Todos
 
-Put this in any note:
+An Obsidian code block that shows the tasks under one heading of another note —
+by default, `## Today` in `todo.md.md`.
 
 ````
 ```today-todos
 ```
 ````
 
-It renders the tasks under `## Today` in `todo.md.md`. Ticking a box edits
-`todo.md.md`; editing `todo.md.md` re-renders the block.
+- Ticking a box edits the source note; editing the source note re-renders the block.
+- The section runs until the next heading of the same or higher level. Only task
+  lines (`- [ ]`, `- [x]`) are shown, as one list.
 
-Override either default inside the block:
+## Options
+
+Leading `key: value` lines set the source:
 
 ````
 ```today-todos
@@ -19,4 +23,21 @@ heading: Today
 ```
 ````
 
-Install: `./install.sh` (no build step; `main.js` is the source).
+## Side column
+
+Any markdown after the options is rendered beside the list — on the left on a
+desktop pane at least 480px wide, stacked above it on mobile and in narrow panes.
+
+````
+```today-todos
+> [!quote]
+> know what to do
+```
+````
+
+## Install
+
+With [BRAT](https://github.com/TfTHacker/obsidian42-brat): add `j1mmy2hang/obsidian-today-todos`.
+
+Locally: `./install.sh <vault>/.obsidian/plugins/today-todos` (no build step;
+`main.js` is the source).

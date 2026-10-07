@@ -4,22 +4,27 @@ const DEFAULTS = { file: 'todo.md.md', heading: 'Today' };
 const TASK = /^(\s*[-*+]\s\[)(.)(\].*)$/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 
-// Settings come from `key: value` lines inside the code block.
+// Leading `file:` / `heading:` lines are settings; everything after them is
+// markdown for a side column, shown left of the todos on desktop.
 function parseOptions(source) {
-  const opts = { ...DEFAULTS };
-  for (const line of source.split('\n')) {
-    const m = line.match(/^\s*(file|heading)\s*:\s*(.+?)\s*$/);
+  const opts = { ...DEFAULTS, side: '' };
+  const lines = source.split('\n');
+  let i = 0;
+  for (; i < lines.length; i++) {
+    const m = lines[i].match(/^\s*(file|heading)\s*:\s*(.+?)\s*$/);
     if (m) opts[m[1]] = m[2];
+    else if (lines[i].trim()) break;
   }
+  opts.side = lines.slice(i).join('\n').trim();
   return opts;
 }
 
-// The task lines under `heading`, grouped by the blank lines between them.
-// Each task keeps its line number so a tick can be written back.
+// The task lines under `heading`. Each keeps its line number so a tick can be
+// written back.
 function readSection(text, heading) {
   const lines = text.split('\n');
-  const groups = [];
-  let level = 0, current = null;
+  const tasks = [];
+  let level = 0;
   for (let i = 0; i < lines.length; i++) {
     const h = lines[i].match(HEADING);
     if (h) {
@@ -28,19 +33,15 @@ function readSection(text, heading) {
       continue;
     }
     if (!level) continue;
-    if (TASK.test(lines[i])) {
-      if (!current) groups.push((current = []));
-      current.push({ line: i, text: lines[i] });
-    } else if (!lines[i].trim()) {
-      current = null;
-    }
+    if (TASK.test(lines[i])) tasks.push({ line: i, text: lines[i] });
   }
-  return { found: level > 0, groups };
+  return { found: level > 0, tasks };
 }
 
 class TodayTodos extends MarkdownRenderChild {
-  constructor(plugin, el, opts) {
+  constructor(plugin, el, opts, sourcePath) {
     super(el);
+    this.sourcePath = sourcePath;
     this.plugin = plugin;
     this.app = plugin.app;
     this.opts = opts;
@@ -59,9 +60,18 @@ class TodayTodos extends MarkdownRenderChild {
       const link = e.target.closest('a.internal-link');
       if (!link) return;
       e.preventDefault();
-      this.app.workspace.openLinkText(link.dataset.href || link.getAttribute('href'), this.path(), Keymap.isModEvent(e));
+      const from = link.closest('.today-todos-side') ? this.sourcePath : this.path();
+      this.app.workspace.openLinkText(link.dataset.href || link.getAttribute('href'), from, Keymap.isModEvent(e));
     });
 
+    // The outer element is the size container; the grid lives on the inner one.
+    this.containerEl.addClass('today-todos');
+    const layout = this.containerEl.createDiv('today-todos-layout');
+    if (this.opts.side) {
+      layout.addClass('has-side');
+      MarkdownRenderer.render(this.app, this.opts.side, layout.createDiv('today-todos-side'), this.sourcePath, this);
+    }
+    this.listEl = layout.createDiv('today-todos-list');
     this.render();
   }
 
@@ -81,32 +91,28 @@ class TodayTodos extends MarkdownRenderChild {
     const text = file ? await this.app.vault.cachedRead(file) : null;
     if (token !== this.token) return; // a newer render started meanwhile
 
-    const el = this.containerEl;
+    const el = this.listEl;
     el.empty();
-    el.addClass('today-todos');
 
     if (!file) return this.note(`No file "${this.opts.file}".`);
-    const { found, groups } = readSection(text, this.opts.heading);
+    const { found, tasks } = readSection(text, this.opts.heading);
     if (!found) return this.note(`No "${this.opts.heading}" heading in ${file.basename}.`);
-    if (!groups.length) return this.note('Nothing for today.');
+    if (!tasks.length) return this.note('Nothing for today.');
 
-    for (const group of groups) {
-      const box = el.createDiv('today-todos-group');
-      await MarkdownRenderer.render(this.app, group.map((t) => t.text.trimStart()).join('\n'), box, file.path, this);
-      box.querySelectorAll('input.task-list-item-checkbox').forEach((input, i) => {
-        const task = group[i];
-        if (!task) return;
-        input.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.toggle(file, task);
-        });
+    await MarkdownRenderer.render(this.app, tasks.map((t) => t.text.trimStart()).join('\n'), el, file.path, this);
+    el.querySelectorAll('input.task-list-item-checkbox').forEach((input, i) => {
+      const task = tasks[i];
+      if (!task) return;
+      input.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.toggle(file, task);
       });
-    }
+    });
   }
 
   note(msg) {
-    this.containerEl.createDiv({ cls: 'today-todos-empty', text: msg });
+    this.listEl.createDiv({ cls: 'today-todos-empty', text: msg });
   }
 
   // Flip `[ ]` ↔ `[x]` on the task's line; if the file shifted, find the line by its text.
@@ -124,7 +130,7 @@ class TodayTodos extends MarkdownRenderChild {
 module.exports = class TodayTodosPlugin extends Plugin {
   onload() {
     this.registerMarkdownCodeBlockProcessor('today-todos', (source, el, ctx) => {
-      ctx.addChild(new TodayTodos(this, el, parseOptions(source)));
+      ctx.addChild(new TodayTodos(this, el, parseOptions(source), ctx.sourcePath));
     });
   }
 };

@@ -1,12 +1,45 @@
-.today-todos-group + .today-todos-group {
-  margin-top: var(--size-4-3);
+/* Obsidian only offsets checkboxes inside .markdown-preview-view; a code block
+   in Live Preview sits in the editor instead, so it needs the same nudge. */
+.today-todos .task-list-item-checkbox {
+  position: relative;
+  top: var(--checkbox-top, 0.2em);
+  left: var(--checkbox-left, 0);
 }
 
-.today-todos-group > ul {
+.today-todos ul {
   margin-block: 0;
 }
 
 .today-todos-empty {
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* Side column: stacked by default (phones, narrow panes), side by side on a
+   wide desktop pane. */
+.today-todos {
+  container-type: inline-size;
+}
+
+.today-todos-side > :first-child {
+  margin-top: 0;
+}
+
+.today-todos-side > :last-child {
+  margin-bottom: 0;
+}
+
+.today-todos-layout.has-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-4);
+}
+
+@container (min-width: 480px) {
+  body:not(.is-mobile) .today-todos-layout.has-side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--size-4-8);
+    align-items: start;
+  }
 }
