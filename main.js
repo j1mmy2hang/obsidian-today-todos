@@ -4,6 +4,21 @@ const DEFAULTS = { file: 'todo.md.md', heading: 'Today' };
 const TASK = /^(\s*[-*+]\s\[)(.)(\].*)$/;
 const HEADING = /^(#{1,6})\s+(.*?)\s*#*\s*$/;
 
+// Y of the baseline of the first line of text inside `el`, or null if it has none.
+function firstBaseline(el) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => (n.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP),
+  });
+  const text = walker.nextNode();
+  if (!text) return null;
+  const probe = document.createElement('span');
+  probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
+  text.parentNode.insertBefore(probe, text);
+  const y = probe.getBoundingClientRect().top;
+  probe.remove();
+  return y;
+}
+
 // Leading `file:` / `heading:` / `title:` lines are settings; everything after them is
 // markdown for a side column, shown left of the todos on desktop.
 function parseOptions(source) {
@@ -66,15 +81,34 @@ class TodayTodos extends MarkdownRenderChild {
 
     // The outer element is the size container; the grid lives on the inner one.
     this.containerEl.addClass('today-todos');
-    const layout = this.containerEl.createDiv('today-todos-layout');
+    this.layoutEl = this.containerEl.createDiv('today-todos-layout');
     if (this.opts.side) {
-      layout.addClass('has-side');
-      MarkdownRenderer.render(this.app, this.opts.side, layout.createDiv('today-todos-side'), this.sourcePath, this);
+      this.layoutEl.addClass('has-side');
+      this.sideEl = this.layoutEl.createDiv('today-todos-side');
+      MarkdownRenderer.render(this.app, this.opts.side, this.sideEl, this.sourcePath, this).then(() => this.align());
+      // The layout switches between grid and stacked with the pane's width.
+      let width = 0;
+      const observer = new ResizeObserver(([entry]) => {
+        if (entry.contentRect.width !== width) (width = entry.contentRect.width), this.align();
+      });
+      observer.observe(this.containerEl);
+      this.register(() => observer.disconnect());
     }
-    const column = layout.createDiv('today-todos-list');
+    const column = this.layoutEl.createDiv('today-todos-list');
     if (this.opts.title) column.createEl('h2', { cls: 'today-todos-title', text: this.opts.title });
     this.listEl = column.createDiv('today-todos-items');
     this.render();
+  }
+
+  // Side by side, push the list down so its first line shares a baseline with
+  // the side column's first line (e.g. a callout's title).
+  align() {
+    if (!this.sideEl) return;
+    const list = this.listEl.parentElement;
+    list.style.paddingTop = '';
+    if (getComputedStyle(this.layoutEl).display !== 'grid') return;
+    const side = firstBaseline(this.sideEl), own = firstBaseline(list);
+    if (side !== null && own !== null && side > own) list.style.paddingTop = `${side - own}px`;
   }
 
   path() {
@@ -111,6 +145,7 @@ class TodayTodos extends MarkdownRenderChild {
         this.toggle(file, task);
       });
     });
+    this.align();
   }
 
   note(msg) {
